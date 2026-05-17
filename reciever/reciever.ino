@@ -21,6 +21,7 @@ enum Direction {
   Stop //8   
 };
 
+
 struct velocity {
   Direction DIRECTION;
   int speed;

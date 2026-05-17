@@ -17,6 +17,12 @@ enum Direction {
   Stop //8   
 };
 
+enum Gear {
+  Low, //Lowest Gear Ratio Lowest Speed
+  Medium, //Normal Gear Ratio Medium Speed
+  High //Highest Gear Ratio Highest Speed
+};
+
 struct velocity {
   Direction DIRECTION;
   int speed;
@@ -52,7 +58,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
 
 //Buttons
 #define BTN1 10
-
+#define BTN2 1
+#define BTN3 2
 //Joystick
 #define JOYX1 26
 #define JOYY1 27
@@ -81,6 +88,8 @@ void setup() {
   analogReadResolution(12);
 
   pinMode(BTN1, INPUT_PULLDOWN);
+  pinMode(BTN2, INPUT_PULLDOWN);
+  pinMode(BTN3, INPUT_PULLDOWN);
   pinMode(JOYX1, INPUT);
   pinMode(JOYY1, INPUT);
   pinMode(JOYSW1, INPUT_PULLUP);
@@ -104,6 +113,13 @@ void setup() {
 }
 
 void loop() {
+    if BTNPressed(BTN1):
+    Serial.println();
+    if BTNPressed(BTN2):
+    Serial.println("BTN2 Pressed!");
+    if BTNPressed(BTN3):
+    Serial.println
+
   newData = false;
   display.clearDisplay();
   display.setCursor(10, 15);
