@@ -5,14 +5,26 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-// Communications
-//johnny's wifi ssid "Dynov2"
-//johnny's password "whatever"
-//hira's wifi ssid "Hifo Hira #1!!"
-//hira's wifi password "Hira1234"
-const char *WIFI_SSID = "Hifo Hira #1!!";
-const char *WIFI_PASSWORD = "Hira1234";
+const char* WIFI_SSID = "Dynov2";
+const char* WIFI_PASSWORD = "whatever";
 const int UDP_PORT = 5005;
+
+enum Direction { 
+  Forward, //0    
+  Backward,      
+  Left,          
+  Right,         
+  LeftForward,   
+  LeftBackward,  
+  RightForward, 
+  RightBackward, 
+  Stop //8   
+};
+
+struct velocity {
+  Direction DIRECTION;
+  int speed;
+};
 
 //Pinouts
 #define BUZZER 10
@@ -30,8 +42,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
 WiFiUDP udp;
 char packet[64];
 
-int pressed = 0;
 
+struct velocity recvData = {Stop, 250};
+bool newData = false;
 //Prototypes
 void initScreen();
 void displayText(const char *message);
@@ -40,6 +53,7 @@ void displayNum(int num);
 
 void setup() {
   Serial.begin(115200);
+  Serial1.begin(9600);
 
   pinMode(BUZZER, OUTPUT);
   
@@ -65,18 +79,18 @@ void setup() {
 }
 
 void loop() {
+  newData = false;
   display.clearDisplay();
   int packetSize = udp.parsePacket();
   Serial.println(packetSize);
-  if (packetSize == sizeof(int)) {
-    udp.read((uint8_t*)&pressed, sizeof(int));
+  if (packetSize) {
+    newData = true;
+    udp.read((uint8_t*)&recvData, sizeof(recvData));
   }
-  displayNum(pressed);
-  if (pressed) {
-    analogWrite(BUZZER, 100);
-  } else {
-    analogWrite(BUZZER, LOW);
+  if (newData) {
+    Serial1.write((uint8_t*)&recvData, sizeof(recvData));
   }
+  displayNum((int) recvData.DIRECTION);
   display.display();
 }
 
