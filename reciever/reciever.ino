@@ -5,8 +5,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-const char* WIFI_SSID = "Dynov2";
-const char* WIFI_PASSWORD = "whatever";
+// Communications
+//johnny's wifi ssid "Dynov2"
+//johnny's password "whatever"
+//hira's wifi ssid "Hifo Hira #1!!"
+//hira's wifi password "Hira1234"
+const char *WIFI_SSID = "Hifo Hira #1!!";
+const char *WIFI_PASSWORD = "Hira1234";
 const int UDP_PORT = 5005;
 
 //Pinouts

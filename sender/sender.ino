@@ -7,12 +7,22 @@
 
 
 // Communications
-const char *WIFI_SSID = "Dynov2";
-const char *WIFI_PASSWORD = "whatever";
+//johnny's wifi ssid "Dynov2"
+//johnny's password "whatever"
+//hira's wifi ssid "Hifo Hira #1!!"
+//hira's wifi password "Hira1234"
+const char *WIFI_SSID = "Hifo Hira #1!!";
+const char *WIFI_PASSWORD = "Hira1234";
 const char *PICO2_IP = "172.20.10.9";  // Reciever Pico IP
 const int UDP_PORT = 5005;
 WiFiUDP udp;
 
+const int pinX = 26;
+const int pinY = 27;
+const int pinSW = 22;
+int x_val;
+int y_val;
+int sw_val;
 //Screen
 #define SDA_PIN 14
 #define SCL_PIN 15
@@ -39,6 +49,13 @@ bool BTNPressed(int BTN);
 void setup() {
   Serial.begin(115200);
 
+  analogReadResolution(12);
+
+  //Setup the pin mode for the joystick
+  pinMode(pinSW, INPUT_PULLUP);
+  pinMode(pinX, INPUT);
+  pinMode(pinY, INPUT);
+
   pinMode(BTN1, INPUT_PULLDOWN);
   Wire1.setSDA(SDA_PIN);
   Wire1.setSCL(SCL_PIN);
@@ -59,10 +76,15 @@ void setup() {
 }
 
 void loop() {
+  //setup for values of joystick, SW is R3 like PS4, x and y is self explantory.
+  int x_val = analogRead(pinX);
+  int y_val = analogRead(pinY);
+  int sw_pin = analogRead(pinSW);
   display.clearDisplay();
   udp.beginPacket(PICO2_IP, UDP_PORT);
   udp.write((uint8_t*) &pressed, sizeof(pressed));
   udp.endPacket();
+  
 
   displayNum((int) millis() / 1000);
 
@@ -71,9 +93,15 @@ void loop() {
     display.print("pressed!");
     pressed = 1;
   } else {
-    display.print("Not Pressed");
+    display.print("!pressed");
     pressed = 0;
   }
+  display.print(", ");
+  display.print(x_val);
+  display.print(", ");
+  display.print(y_val);
+  display.print(", ");
+  display.print(sw_val);
 
   display.display();
 }
