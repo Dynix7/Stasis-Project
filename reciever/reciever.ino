@@ -31,6 +31,7 @@ WiFiUDP udp;
 char packet[64];
 
 int pressed = 0;
+int x_val = 20;
 
 //Prototypes
 void initScreen();
@@ -62,16 +63,20 @@ void setup() {
 
   udp.begin(UDP_PORT);
   Serial.println("Listening for UDP packets...");
+  Serial.println(WiFi.localIP());
 }
 
 void loop() {
   display.clearDisplay();
   int packetSize = udp.parsePacket();
-  Serial.println(packetSize);
-  if (packetSize == sizeof(int)) {
+  //Serial.println(packetSize);
+  if (packetSize > 0) {
     udp.read((uint8_t*)&pressed, sizeof(int));
+    udp.read((uint8_t*) &x_val, sizeof(x_val));
+    x_val -=2090;
   }
   displayNum(pressed);
+  display.println(x_val);
   if (pressed) {
     analogWrite(BUZZER, 100);
   } else {

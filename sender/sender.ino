@@ -13,7 +13,7 @@
 //hira's wifi password "Hira1234"
 const char *WIFI_SSID = "Hifo Hira #1!!";
 const char *WIFI_PASSWORD = "Hira1234";
-const char *PICO2_IP = "172.20.10.9";  // Reciever Pico IP
+const char *PICO2_IP = "172.20.10.8";  // Reciever Pico IP
 const int UDP_PORT = 5005;
 WiFiUDP udp;
 
@@ -83,6 +83,10 @@ void loop() {
   display.clearDisplay();
   udp.beginPacket(PICO2_IP, UDP_PORT);
   udp.write((uint8_t*) &pressed, sizeof(pressed));
+  udp.write((uint8_t*) &x_val, sizeof(x_val));
+
+
+
   udp.endPacket();
   
 
@@ -98,10 +102,6 @@ void loop() {
   }
   display.print(", ");
   display.print(x_val);
-  display.print(", ");
-  display.print(y_val);
-  display.print(", ");
-  display.print(sw_val);
 
   display.display();
 }
