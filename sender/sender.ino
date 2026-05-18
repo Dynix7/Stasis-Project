@@ -59,7 +59,7 @@ WiFiUDP udp;
 #define SCL_PIN 15
 
 #define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 32  
+#define SCREEN_HEIGHT 64  
 #define OLED_RESET -1   
 #define SCREEN_ADDRESS 0x3C 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
@@ -73,6 +73,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
 #define JOYY1 27
 #define JOYSW1 22
 
+#define BUZZER 17
 //Data Variables
 int pressed = 0;
 bool newData = false;
@@ -107,6 +108,8 @@ void changeGear(int newGear);
 void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
+  digitalWrite(BUZZER, HIGH);
+
 
   pinMode(BTN1, INPUT_PULLDOWN);
   pinMode(BTN2, INPUT_PULLDOWN);
@@ -131,6 +134,8 @@ void setup() {
 
   Serial.println();
   Serial.println(WiFi.localIP());
+
+
 }
 
 void loop() {
@@ -163,7 +168,8 @@ void loop() {
 
   switchGears();
   if (Pedals.Gas) accelerate();
-  if (Pedals.Brake || sendData.speed > Gears.maxSpeed) slowDown();
+  if (!Pedals.Gas) gradualSlowDown();
+  if (Pedals.Brake || (sendData.speed > Gears.maxSpeed)) slowDown();
   
   udp.beginPacket(PICO2_IP, UDP_PORT);
   udp.write((uint8_t*) &sendData, sizeof(sendData));
@@ -180,6 +186,9 @@ void initScreen() {
     Serial.println("Dispaly start erorr");
   }
   display.clearDisplay();
+  display.ssd1306_command(0xA1);
+  display.ssd1306_command(0xC8);
+  display.setRotation(2);
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
 
@@ -296,7 +305,7 @@ void updatePedals(String msg) {
 void accelerate() {
   int calcSpeed = sendData.speed;
   if (!Pedals.Clutch) {
-    calcSpeed += 1;
+    calcSpeed += 2;
   }
   if (calcSpeed > Gears.maxSpeed) {
     calcSpeed = Gears.maxSpeed; 
@@ -307,7 +316,16 @@ void accelerate() {
 
 void slowDown() {
   int calcSpeed = sendData.speed;
-  calcSpeed -= 1;
+  calcSpeed -= 2;
+  if (calcSpeed < 0) {
+    calcSpeed = 0;
+  }
+  sendData.speed = calcSpeed;
+}
+//Hira implemented this. son are we fr?
+void gradualSlowDown() {
+  int calcSpeed = sendData.speed;
+  calcSpeed -= 0.01;
   if (calcSpeed < 0) {
     calcSpeed = 0;
   }
@@ -366,6 +384,9 @@ void Stall() {
   Gears.currentGear = 1;
   setGearSpeed();
   sendData.speed = 50;
+  digitalWrite(BUZZER, HIGH);
+  delay(40);
+  digitalWrite(BUZZER, LOW);
 }
 
 //Hira did this work
@@ -385,22 +406,31 @@ void changeGear(int newGear) {
 Direction calculateDirection(JoyStick *pJoy) {
   const int DEADZONE = 300; 
 
-  if (abs(pJoy->joyX) < DEADZONE && abs(pJoy->joyY) < DEADZONE) {
+    
+  if (abs(pJoy->joyX) < DEADZONE && abs(pJoy->joyY) < DEADZONE && Pedals.Gas) {
+    return Forward;
+  }
+
+  if (abs(pJoy->joyX) < DEADZONE && abs(pJoy->joyY) < DEADZONE && !Pedals.Gas) {
     return Stop;
   }
 
   float angle = atan2(pJoy->joyY, pJoy->joyX); 
   float degrees = angle * RAD_TO_DEG; 
 
+//Code for movement and acceleration. Main source of problem is that the pedals dont actually dicate the movement, its the joysticks that do.
+// Hira's revisions**
   if (degrees < 0) {
     degrees += 360;
   }
-  if (degrees >= 22.5 && degrees <  67.5) return RightForward;
-  else if (degrees >= 67.5 && degrees < 112.5) return Forward;
-  else if (degrees >= 112.5 && degrees < 157.5) return LeftForward;
-  else if (degrees >= 157.5 && degrees < 202.5) return Left;
-  else if (degrees >= 202.5 && degrees < 247.5) return LeftBackward;
-  else if (degrees >= 247.5 && degrees < 292.5) return Backward;
-  else if (degrees >= 292.5 && degrees < 337.5) return RightBackward;
-  else return Right; 
+  if ((degrees >= 22.5 && degrees <  67.5) && Pedals.Gas) return RightForward;
+  else if ((degrees >= 67.5 && degrees < 112.5) && Pedals.Gas) return Forward;
+  else if ((degrees >= 112.5 && degrees < 157.5) && Pedals.Gas) return LeftForward;
+  else if ((degrees >= 157.5 && degrees < 202.5) && Pedals.Gas) return Left;
+  else if ((degrees >= 202.5 && degrees < 247.5) && Pedals.Gas) return LeftBackward;
+  else if ((degrees >= 247.5 && degrees < 292.5) && Pedals.Gas) return Backward; 
+  else if ((degrees >= 292.5 && degrees < 337.5) && Pedals.Gas) return RightBackward;
+  else if ((degrees >= 337.5 || degrees < 22.5) && Pedals.Gas) return Right;
+  else return Stop;
+
 }
