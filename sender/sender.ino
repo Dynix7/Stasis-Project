@@ -384,9 +384,9 @@ void Stall() {
   Gears.currentGear = 1;
   setGearSpeed();
   sendData.speed = 50;
-  digitalWrite(BUZZER, HIGH);
-  delay(40);
-  digitalWrite(BUZZER, LOW);
+  display.setTextSize(2);
+  display.println("STALL!");
+  delay(100);
 }
 
 //Hira did this work
