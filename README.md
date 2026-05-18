@@ -10,7 +10,7 @@ Suck at manual transmission? Well this project probably won't help you but this 
 ![alt text](images/image5.jpg)
 
 # Demo Video
-[text](https://www.youtube.com/shorts/IhivATOUFbg)
+[Link To Video!](https://www.youtube.com/shorts/IhivATOUFbg)
 
 # Simplified Wiring Diagram
 ![alt text](images/diagram.jpg)
