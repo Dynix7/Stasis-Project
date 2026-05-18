@@ -17,12 +17,6 @@ enum Direction {
   Stop //8   
 };
 
-enum Gear {
-  Low, //Lowest Gear Ratio Lowest Speed
-  Medium, //Normal Gear Ratio Medium Speed
-  High //Highest Gear Ratio Highest Speed
-};
-
 struct velocity {
   Direction DIRECTION;
   int speed;
@@ -30,13 +24,27 @@ struct velocity {
 
 struct velocity sendData = {
   .DIRECTION = Stop,
-  .speed = 250
+  .speed = 0
 };
 
 struct JoyStick {
   int joyX = 0;
   int joyY = 0;
   bool joyBTN = false;
+};
+
+struct GearStates {
+  bool Gear1 = true; // 100
+  bool Gear2 = false; // 175
+  bool Gear3 = false; //250
+  int currentGear = 1;
+  int maxSpeed = 100;
+};
+
+struct PedalStates {
+  bool Clutch = false;
+  bool Brake = false;
+  bool Gas = false;
 };
 
 // Communications
@@ -68,8 +76,10 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
 //Data Variables
 int pressed = 0;
 bool newData = false;
+String msg = "";
 JoyStick Joy1;
-
+GearStates Gears;
+PedalStates Pedals;
 
 //Prototypes
 void initScreen();
@@ -82,6 +92,17 @@ Direction nextDir(Direction d);
 void readJoyStick(JoyStick *pJoy);
 float limitRad(float rad);
 Direction calculateDirection(JoyStick *pJoy);
+
+void updateButtons();
+void updatePedals(String msg);
+
+void accelerate();
+void slowDown();
+void switchGears();
+void setGearSpeed();
+void Stall();
+void changeGear(int newGear);
+
 
 void setup() {
   Serial.begin(115200);
@@ -113,22 +134,37 @@ void setup() {
 }
 
 void loop() {
-    if BTNPressed(BTN1):
-    Serial.println();
-    if BTNPressed(BTN2):
-    Serial.println("BTN2 Pressed!");
-    if BTNPressed(BTN3):
-    Serial.println
-
   newData = false;
+  msg = "";
+  if (Serial.available()) {
+    msg = Serial.readStringUntil('\n');
+    msg.trim();
+  }
+
   display.clearDisplay();
   display.setCursor(10, 15);
 
+  updateButtons();
+  updatePedals(msg);
+
   readJoyStick(&Joy1);
   sendData.DIRECTION = calculateDirection(&Joy1);
-  
-  display.print((int) sendData.DIRECTION);
 
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Current Gear: ");
+  display.println(Gears.currentGear);
+
+  display.print("Current Speed: ");
+  display.println(sendData.speed);
+
+  display.print("Max Speed: ");
+  display.println(Gears.maxSpeed);
+
+  switchGears();
+  if (Pedals.Gas) accelerate();
+  if (Pedals.Brake || sendData.speed > Gears.maxSpeed) slowDown();
+  
   udp.beginPacket(PICO2_IP, UDP_PORT);
   udp.write((uint8_t*) &sendData, sizeof(sendData));
   udp.endPacket();
@@ -152,7 +188,7 @@ void initScreen() {
 }
 
 void displayText(const char *message) {
-  display.setTextSize(1);
+  display.setTextSize(2);
   display.setCursor(0, 0);
   display.print(message);
 }
@@ -185,7 +221,7 @@ bool BTNPressed(int BTN) {
   static bool lastState[30] = {false};
   static bool lastReturned[30] = {false};
   static unsigned long lastChangeTime[30] = {0};
-  int DEBOUNCE_MS = 50;
+  int DEBOUNCE_MS = 300;
 
   bool reading = digitalRead(BTN) == HIGH;
   unsigned long now = millis();
@@ -229,6 +265,122 @@ float limitRad(float rad) {
   }
   return rad;
 }
+
+void updateButtons() {
+  Gears.Gear1 = BTNPressed(BTN1);
+  Gears.Gear2 = BTNPressed(BTN2);
+  Gears.Gear3 = BTNPressed(BTN3); // i think this button is broken
+  //Serial.println(Gears.Gear1);
+  //Serial.println(Gears.Gear2);
+  //Serial.println(Gears.Gear3);
+
+}
+
+void updatePedals(String msg) {
+  static unsigned long lastATime = 0;
+  static unsigned long lastBTime = 0;
+  static unsigned long lastCTime = 0;
+  const unsigned long HOLD_TIMEOUT = 400; // ms, adjust to be > your send interval
+
+  unsigned long now = millis();
+
+  if (msg == "a") lastATime = now;
+  else if (msg == "b") lastBTime = now;
+  else if (msg == "c") lastCTime = now;
+
+  Pedals.Clutch = (now - lastATime) < HOLD_TIMEOUT;
+  Pedals.Brake  = (now - lastBTime) < HOLD_TIMEOUT;
+  Pedals.Gas = (now - lastCTime) < HOLD_TIMEOUT;
+}
+
+void accelerate() {
+  int calcSpeed = sendData.speed;
+  if (!Pedals.Clutch) {
+    calcSpeed += 1;
+  }
+  if (calcSpeed > Gears.maxSpeed) {
+    calcSpeed = Gears.maxSpeed; 
+  }
+
+  sendData.speed = calcSpeed;
+}
+
+void slowDown() {
+  int calcSpeed = sendData.speed;
+  calcSpeed -= 1;
+  if (calcSpeed < 0) {
+    calcSpeed = 0;
+  }
+  sendData.speed = calcSpeed;
+}
+
+void switchGears() {
+  if (Pedals.Clutch) {
+    int current = Gears.currentGear;
+    // Pressing 1st Button
+    if (Gears.Gear1) {
+      //Stall
+      if (current == 3) {
+        Stall();
+      }
+      if (current == 2) 
+        changeGear(1);
+    }
+    // Pressing 2nd Button
+    if (Gears.Gear2) {
+      if (current == 1)
+        changeGear(2);
+      if (current == 3)
+        changeGear(2);
+    }
+
+    // Pressing 3rd Button
+    if (Gears.Gear3) {
+      if (current == 1)
+        Stall();
+      if (current == 2) 
+        changeGear(3);
+    }
+  }
+
+}
+
+void setGearSpeed() {
+  int current = Gears.currentGear;
+  switch (current) {
+    //Gear 1
+    case 1:
+      Gears.maxSpeed = 125;
+      break;
+    case 2:
+      Gears.maxSpeed = 175;
+      break;
+    case 3:
+      Gears.maxSpeed = 255;
+      break;
+  }
+}
+
+//Private
+void Stall() {
+  Gears.currentGear = 1;
+  setGearSpeed();
+  sendData.speed = 50;
+}
+
+//Hira did this work
+void changeGear(int newGear) {
+  int currentGear = Gears.currentGear;
+  int amountBetween = abs(newGear-currentGear);
+  if(amountBetween > 1) {
+    Stall();
+  }
+  else if (amountBetween <= 1) {
+    Gears.currentGear = newGear;
+    setGearSpeed();
+    }
+  }
+
 
 Direction calculateDirection(JoyStick *pJoy) {
   const int DEADZONE = 300; 

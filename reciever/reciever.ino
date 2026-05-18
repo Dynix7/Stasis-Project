@@ -21,7 +21,6 @@ enum Direction {
   Stop //8   
 };
 
-
 struct velocity {
   Direction DIRECTION;
   int speed;
@@ -92,6 +91,8 @@ void loop() {
     Serial1.write((uint8_t*)&recvData, sizeof(recvData));
   }
   displayNum((int) recvData.DIRECTION);
+  display.setTextSize(2);
+  display.print("LINKED :)");
   display.display();
 }
 
@@ -117,5 +118,5 @@ void displayText(const char *message) {
 void displayNum(int num) {
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.print(num);
+  display.println(num);
 }
